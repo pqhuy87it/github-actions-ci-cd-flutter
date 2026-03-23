@@ -103,9 +103,7 @@ void main() {
   group('SearchResults', () {
     test('returns empty result when query is empty', () async {
       final container = createContainer(
-        overrides: [
-          gitHubRepositoryProvider.overrideWithValue(mockRepo),
-        ],
+        overrides: [gitHubRepositoryProvider.overrideWithValue(mockRepo)],
       );
 
       // Query mặc định là '' → không gọi API
@@ -116,8 +114,9 @@ void main() {
     });
 
     test('fetches users when query is set', () async {
-      when(() => mockRepo.searchUsers('flutter'))
-          .thenAnswer((_) async => TestData.searchResult());
+      when(
+        () => mockRepo.searchUsers('flutter'),
+      ).thenAnswer((_) async => TestData.searchResult());
 
       final container = createContainer(
         overrides: [
@@ -138,8 +137,9 @@ void main() {
     });
 
     test('propagates repository errors', () async {
-      when(() => mockRepo.searchUsers('error'))
-          .thenThrow(Exception('API rate limit'));
+      when(
+        () => mockRepo.searchUsers('error'),
+      ).thenThrow(Exception('API rate limit'));
 
       final container = createContainer(
         overrides: [

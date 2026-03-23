@@ -10,12 +10,14 @@ part 'search_providers.g.dart';
 // ============================================================
 @riverpod
 Dio dio(Ref ref) {
-  final dio = Dio(BaseOptions(
-    baseUrl: 'https://api.github.com',
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-    headers: {'Accept': 'application/vnd.github.v3+json'},
-  ));
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://api.github.com',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      headers: {'Accept': 'application/vnd.github.v3+json'},
+    ),
+  );
 
   ref.onDispose(dio.close);
   return dio;

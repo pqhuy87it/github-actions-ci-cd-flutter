@@ -1,4 +1,3 @@
-
 // ============================================================
 // lib/main.dart
 // ============================================================
@@ -8,9 +7,5 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: GitHubSearchApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: GitHubSearchApp()));
 }

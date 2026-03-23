@@ -19,11 +19,7 @@ class GitHubRepositoryImpl implements GitHubRepository {
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/search/users',
-      queryParameters: {
-        'q': query,
-        'page': page,
-        'per_page': 20,
-      },
+      queryParameters: {'q': query, 'page': page, 'per_page': 20},
     );
 
     return SearchResult(

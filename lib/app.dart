@@ -1,4 +1,3 @@
-
 // ============================================================
 // lib/app.dart
 // ============================================================
@@ -14,10 +13,7 @@ class GitHubSearchApp extends StatelessWidget {
     return MaterialApp(
       title: 'GitHub Search',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.blue,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
       home: const SearchScreen(),
     );
   }

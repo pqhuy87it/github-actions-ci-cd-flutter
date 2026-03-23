@@ -49,13 +49,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _controller.text.isNotEmpty
                     ? IconButton(
-                  key: const Key('clear_button'),
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _controller.clear();
-                    _onSearch('');
-                  },
-                )
+                        key: const Key('clear_button'),
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _controller.clear();
+                          _onSearch('');
+                        },
+                      )
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -84,8 +84,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     const SizedBox(height: 8),
                     ElevatedButton(
                       key: const Key('retry_button'),
-                      onPressed: () =>
-                          ref.invalidate(searchResultsProvider),
+                      onPressed: () => ref.invalidate(searchResultsProvider),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -142,18 +141,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Recent Searches',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Recent Searches',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             TextButton(
               key: const Key('clear_history_button'),
-              onPressed: () =>
-                  ref.read(searchHistoryProvider.notifier).clear(),
+              onPressed: () => ref.read(searchHistoryProvider.notifier).clear(),
               child: const Text('Clear'),
             ),
           ],
         ),
         ...history.map(
-              (query) => ListTile(
+          (query) => ListTile(
             leading: const Icon(Icons.history),
             title: Text(query),
             onTap: () {

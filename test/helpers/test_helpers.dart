@@ -39,20 +39,17 @@ class TestData {
     String avatarUrl = 'https://example.com/avatar.png',
     String profileUrl = 'https://github.com/octocat',
     int repoCount = 10,
-  }) =>
-      GitHubUser(
-        id: id,
-        username: username,
-        avatarUrl: avatarUrl,
-        profileUrl: profileUrl,
-        repoCount: repoCount,
-      );
+  }) => GitHubUser(
+    id: id,
+    username: username,
+    avatarUrl: avatarUrl,
+    profileUrl: profileUrl,
+    repoCount: repoCount,
+  );
 
-  static SearchResult searchResult({
-    List<GitHubUser>? users,
-    int? totalCount,
-  }) {
-    final userList = users ??
+  static SearchResult searchResult({List<GitHubUser>? users, int? totalCount}) {
+    final userList =
+        users ??
         [
           user(id: 1, username: 'octocat', repoCount: 8),
           user(id: 2, username: 'defunkt', repoCount: 15),
@@ -72,9 +69,7 @@ class TestData {
 // ============================================================
 
 /// Tạo ProviderContainer cho unit test (không cần Widget tree)
-ProviderContainer createContainer({
-  List<Override> overrides = const [],
-}) {
+ProviderContainer createContainer({List<Override> overrides = const []}) {
   final container = ProviderContainer(overrides: overrides);
   addTearDown(container.dispose);
   return container;
@@ -82,10 +77,10 @@ ProviderContainer createContainer({
 
 /// Pump widget bên trong ProviderScope
 Future<void> pumpApp(
-    WidgetTester tester, {
-      required Widget child,
-      List<Override> overrides = const [],
-    }) async {
+  WidgetTester tester, {
+  required Widget child,
+  List<Override> overrides = const [],
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: overrides,
