@@ -149,7 +149,7 @@ void main() {
       );
 
       // Giữ provider alive bằng listen thay vì read
-      container.listen(searchResultsProvider, (_, __) {});
+      container.listen(searchResultsProvider, (_, _) {});
 
       container.read(searchQueryProvider.notifier).update('error');
 

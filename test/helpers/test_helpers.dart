@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:github_search_app/features/search/data/github_repository.dart';
 import 'package:github_search_app/features/search/data/user_model.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 // ============================================================
 // Mock classes
@@ -20,7 +20,7 @@ class _TestHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
-      ..badCertificateCallback = (_, __, ___) => true;
+      ..badCertificateCallback = (_, _, _) => true;
   }
 }
 

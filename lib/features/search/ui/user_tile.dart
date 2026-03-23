@@ -19,7 +19,7 @@ class UserTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundImage: NetworkImage(user.avatarUrl),
-          onBackgroundImageError: (_, __) {},
+          onBackgroundImageError: (_, _) {},
         ),
         title: Text(user.username),
         subtitle: Text('${user.repoCount} repos'),
