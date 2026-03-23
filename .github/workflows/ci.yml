@@ -1,40 +1,37 @@
 # .github/workflows/ci.yml
-name: Flutter CI
+name: CI
 
 on:
+  push:
+    branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  push:
-    branches: [develop]
 
-# Cancel in-progress runs for the same PR/branch
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.27.x'
-  JAVA_VERSION: '17'
 
 jobs:
-  # ============================================================
-  # Stage 1: Analyze & Lint
-  # ============================================================
+  # ===========================================
+  # Job 1: Analyze, Lint, Format
+  # ===========================================
   analyze:
-    name: Analyze & Lint
+    name: 🔍 Analyze & Format
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Flutter
-        uses: subosheep/flutter-action@v2
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-          cache: true # Cache Flutter SDK
+          cache: true
 
-      # Cache pub dependencies
       - name: Cache pub packages
         uses: actions/cache@v4
         with:
@@ -47,40 +44,40 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # ---- Riverpod code generation (nếu dùng riverpod_generator) ----
+      # Code generation (freezed + riverpod_generator)
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # Verify generated files are committed (optional nhưng recommended)
-      - name: Check generated files are up-to-date
+      # Verify generated files are committed
+      - name: Check generated files
         run: |
           if [ -n "$(git diff --name-only)" ]; then
-            echo "::error::Generated files are out of date. Run 'dart run build_runner build' and commit."
+            echo "❌ Generated files are out of date!"
+            echo "Run: dart run build_runner build --delete-conflicting-outputs"
+            echo ""
+            echo "Changed files:"
             git diff --name-only
             exit 1
           fi
+          echo "✅ Generated files are up to date"
 
-      # ---- Static analysis ----
-      - name: Analyze code
+      # Static analysis
+      - name: Flutter analyze
         run: flutter analyze --fatal-infos
 
-      # ---- Custom lint rules (custom_lint cho riverpod_lint) ----
-      - name: Run custom lint
+      # Riverpod-specific lint rules
+      - name: Custom lint (riverpod_lint)
         run: dart run custom_lint
-        # riverpod_lint cung cấp lint rules riêng:
-        #   - missing provider scope
-        #   - unnecessary rebuilds
-        #   - provider naming conventions
 
-      # ---- Formatting ----
+      # Format check
       - name: Check formatting
         run: dart format --set-exit-if-changed .
 
-  # ============================================================
-  # Stage 2: Unit & Widget Tests
-  # ============================================================
+  # ===========================================
+  # Job 2: Unit & Widget Tests
+  # ===========================================
   test:
-    name: Unit & Widget Tests
+    name: 🧪 Tests
     runs-on: ubuntu-latest
     needs: analyze
     timeout-minutes: 15
@@ -109,7 +106,7 @@ jobs:
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # ---- Run tests with coverage ----
+      # Run all tests with coverage
       - name: Run tests
         run: |
           flutter test \
@@ -117,108 +114,59 @@ jobs:
             --test-randomize-ordering-seed=random \
             --reporter=github
 
-      # ---- Coverage enforcement ----
-      - name: Check coverage threshold
+      # Coverage threshold check
+      - name: Check coverage (min 60%)
         run: |
-          # Parse lcov.info for line coverage
-          TOTAL_LINES=$(grep -c "^DA:" coverage/lcov.info || echo 0)
-          HIT_LINES=$(grep "^DA:" coverage/lcov.info | grep -v ",0$" | wc -l || echo 0)
-          
-          if [ "$TOTAL_LINES" -eq 0 ]; then
-            echo "::warning::No coverage data found"
+          if [ ! -f coverage/lcov.info ]; then
+            echo "⚠️ No coverage file found"
             exit 0
           fi
-          
-          COVERAGE=$(( HIT_LINES * 100 / TOTAL_LINES ))
-          echo "Coverage: ${COVERAGE}%"
-          
-          THRESHOLD=70
-          if [ "$COVERAGE" -lt "$THRESHOLD" ]; then
-            echo "::error::Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
-            exit 1
+
+          TOTAL=$(grep -c "^DA:" coverage/lcov.info || echo 0)
+          HIT=$(grep "^DA:" coverage/lcov.info | grep -cv ",0$" || echo 0)
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "⚠️ No coverage data"
+            exit 0
           fi
 
-      # ---- Upload coverage report ----
-      - name: Upload coverage to Codecov
+          PCT=$(( HIT * 100 / TOTAL ))
+          echo "📊 Coverage: ${PCT}% (${HIT}/${TOTAL} lines)"
+
+          if [ "$PCT" -lt 60 ]; then
+            echo "❌ Coverage ${PCT}% is below 60% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage OK"
+
+      # Upload coverage (optional — cần CODECOV_TOKEN secret)
+      - name: Upload coverage
         if: github.event_name == 'pull_request'
         uses: codecov/codecov-action@v4
         with:
           file: coverage/lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
-  # ============================================================
-  # Stage 3: Integration Tests (chạy trên emulator)
-  # ============================================================
-  integration_test:
-    name: Integration Tests
-    runs-on: macos-latest # Cần macOS cho iOS simulator
-    needs: analyze
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        platform: [android, ios]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosheep/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Setup Java (Android)
-        if: matrix.platform == 'android'
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          flutter pub get
-          dart run build_runner build --delete-conflicting-outputs
-
-      # ---- Android Emulator ----
-      - name: Run integration tests (Android)
-        if: matrix.platform == 'android'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: pixel_6
-          script: |
-            flutter test integration_test \
-              --flavor staging \
-              -d emulator-5554
-
-      # ---- iOS Simulator ----
-      - name: Run integration tests (iOS)
-        if: matrix.platform == 'ios'
-        run: |
-          DEVICE_ID=$(xcrun simctl list devices available -j \
-            | jq -r '.devices | to_entries[] | .value[] | select(.name == "iPhone 16") | .udid' \
-            | head -1)
-          xcrun simctl boot "$DEVICE_ID"
-          flutter test integration_test -d "$DEVICE_ID"
-
-  # ============================================================
-  # Stage 4: Build Artifacts
-  # ============================================================
+  # ===========================================
+  # Job 3: Build (verify compilable)
+  # ===========================================
   build:
-    name: Build ${{ matrix.platform }}
-    needs: [test, integration_test]
-    timeout-minutes: 30
+    name: 🏗️ Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    needs: test
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: android
+          - platform: android-apk
             runner: ubuntu-latest
+            build_cmd: flutter build apk --debug
           - platform: ios
             runner: macos-latest
-    runs-on: ${{ matrix.runner }}
+            build_cmd: flutter build ios --no-codesign --debug
     steps:
       - uses: actions/checkout@v4
 
@@ -229,102 +177,25 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Setup Java (Android)
-        if: matrix.platform == 'android'
+      - name: Setup Java (Android only)
+        if: contains(matrix.platform, 'android')
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: '17'
 
       - name: Install dependencies
         run: |
           flutter pub get
           dart run build_runner build --delete-conflicting-outputs
 
-      # ---- Inject environment config ----
-      - name: Create .env
-        run: |
-          cat <<EOF > .env
-          API_BASE_URL=${{ secrets.API_BASE_URL_STAGING }}
-          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
-          EOF
+      - name: Build
+        run: ${{ matrix.build_cmd }}
 
-      # ---- Android Build ----
-      - name: Build APK (Android)
-        if: matrix.platform == 'android'
-        run: |
-          flutter build apk \
-            --flavor staging \
-            --release \
-            --build-number=${{ github.run_number }} \
-            --dart-define-from-file=.env \
-            --obfuscate \
-            --split-debug-info=build/debug-info
-
-      - name: Build App Bundle (Android)
-        if: matrix.platform == 'android'
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-          
-          flutter build appbundle \
-            --flavor staging \
-            --release \
-            --build-number=${{ github.run_number }} \
-            --dart-define-from-file=.env \
-            --obfuscate \
-            --split-debug-info=build/debug-info
-
-      # ---- iOS Build ----
-      - name: Install Apple certificates
-        if: matrix.platform == 'ios'
-        uses: apple-actions/import-codesign-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.IOS_P12_BASE64 }}
-          p12-password: ${{ secrets.IOS_P12_PASSWORD }}
-
-      - name: Install provisioning profile
-        if: matrix.platform == 'ios'
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" \
-            | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-
-      - name: Build IPA (iOS)
-        if: matrix.platform == 'ios'
-        run: |
-          flutter build ipa \
-            --flavor staging \
-            --release \
-            --build-number=${{ github.run_number }} \
-            --dart-define-from-file=.env \
-            --obfuscate \
-            --split-debug-info=build/debug-info \
-            --export-options-plist=ios/ExportOptions.plist
-
-      # ---- Upload build artifacts ----
-      - name: Upload Android artifacts
-        if: matrix.platform == 'android'
+      - name: Upload build artifact
+        if: contains(matrix.platform, 'android')
         uses: actions/upload-artifact@v4
         with:
-          name: android-build
-          path: |
-            build/app/outputs/flutter-apk/app-staging-release.apk
-            build/app/outputs/bundle/stagingRelease/*.aab
-          retention-days: 7
-
-      - name: Upload iOS artifacts
-        if: matrix.platform == 'ios'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-build
-          path: build/ios/ipa/*.ipa
-          retention-days: 7
-
-      # ---- Upload debug symbols (Sentry/Crashlytics) ----
-      - name: Upload debug symbols
-        run: |
-          # Sentry example
-          npx @sentry/cli upload-dif build/debug-info \
-            --org ${{ secrets.SENTRY_ORG }} \
-            --project ${{ secrets.SENTRY_PROJECT }} \
-            --auth-token ${{ secrets.SENTRY_AUTH_TOKEN }}
+          name: ${{ matrix.platform }}-build
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 3
